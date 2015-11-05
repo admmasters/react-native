@@ -16,6 +16,20 @@
 #import "RCTUtils.h"
 #import "UIView+React.h"
 
+static UIView *RCTViewHitTest(UIView *view, CGPoint point, UIEvent *event)
+{
+  for (UIView *subview in [view.subviews reverseObjectEnumerator]) {
+    if (!subview.isHidden && subview.isUserInteractionEnabled && subview.alpha > 0) {
+      CGPoint convertedPoint = [subview convertPoint:point fromView:view];
+      UIView *subviewHitTestView = [subview hitTest:convertedPoint withEvent:event];
+      if (subviewHitTestView != nil) {
+        return subviewHitTestView;
+      }
+    }
+  }
+  return nil;
+}
+
 @implementation UIView (RCTViewUnmounting)
 
 - (void)react_remountAllSubviews
@@ -136,46 +150,18 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:unused)
 
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
 {
-  BOOL canReceiveTouchEvents = ([self isUserInteractionEnabled] && ![self isHidden]);
-  if(!canReceiveTouchEvents) {
-    return nil;
-  }
-
-  // `hitSubview` is the topmost subview which was hit. The hit point can
-  // be outside the bounds of `view` (e.g., if -clipsToBounds is NO).
-  UIView *hitSubview = nil;
-  BOOL isPointInside = [self pointInside:point withEvent:event];
-  BOOL needsHitSubview = !(_pointerEvents == RCTPointerEventsNone || _pointerEvents == RCTPointerEventsBoxOnly);
-  if (needsHitSubview && (![self clipsToBounds] || isPointInside)) {
-    // The default behaviour of UIKit is that if a view does not contain a point,
-    // then no subviews will be returned from hit testing, even if they contain
-    // the hit point. By doing hit testing directly on the subviews, we bypass
-    // the strict containment policy (i.e., UIKit guarantees that every ancestor
-    // of the hit view will return YES from -pointInside:withEvent:). See:
-    //  - https://developer.apple.com/library/ios/qa/qa2013/qa1812.html
-    for (UIView *subview in [self.subviews reverseObjectEnumerator]) {
-      CGPoint convertedPoint = [subview convertPoint:point fromView:self];
-      hitSubview = [subview hitTest:convertedPoint withEvent:event];
-      if (hitSubview != nil) {
-        break;
-      }
-    }
-  }
-
-  UIView *hitView = (isPointInside ? self : nil);
-
   switch (_pointerEvents) {
     case RCTPointerEventsNone:
       return nil;
     case RCTPointerEventsUnspecified:
-      return hitSubview ?: hitView;
+      return RCTViewHitTest(self, point, event) ?: [super hitTest:point withEvent:event];
     case RCTPointerEventsBoxOnly:
-      return hitView;
+      return [super hitTest:point withEvent:event] ? self: nil;
     case RCTPointerEventsBoxNone:
-      return hitSubview;
+      return RCTViewHitTest(self, point, event);
     default:
       RCTLogError(@"Invalid pointer-events specified %zd on %@", _pointerEvents, self);
-      return hitSubview ?: hitView;
+      return [super hitTest:point withEvent:event];
   }
 }
 
