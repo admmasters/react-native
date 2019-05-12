@@ -1,0 +1,10 @@
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.13.3
+ignore: {}
+# patches apply the minimum changes required to fix a vulnerability
+patch:
+  'npm:lodash:20180130':
+    - plist > xmlbuilder > lodash:
+        patched: '2019-05-12T03:21:37.662Z'
+    - xcode > simple-plist > plist > xmlbuilder > lodash:
+        patched: '2019-05-12T03:21:37.662Z'
